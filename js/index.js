@@ -2,23 +2,31 @@
  * Mandelbrot set using webgl
  */
 
+var iterations = ITERS;
+var scale = SCALE;
+var offset = OFFSET;
+var cReal = C_REAL;
+var cImag = C_IMAG;
+var red;
+var green;
+var blue;
+var time = 0.0;
+var timePlace = document.getElementById("time");
+
 // Constants
 function reset(_is_mandelbrot) {
-  is_mandelbrot = _is_mandelbrot;
   iterations = ITERS;
   scale = SCALE;
   offset = OFFSET;
-  limit = LIMIT;
-  cReal = is_mandelbrot ? C_REAL : C_REAL_JULIA;
-  cImag = is_mandelbrot ? C_IMAG : C_IMAG_JULIA;
-  cRealJulia = C_REAL_JULIA
-  cImagJulia = C_IMAG_JULIA
-  tintColor = TINT_COLOR;
-  colorFrequency = COLOR_FREQ;
+  cReal = C_REAL;
+  cImag = C_IMAG;
+  red = RED;
+  green = GREEN;
+  blue = BLUE;
 }
-reset(IS_MANDELBROT);
+reset(true);
 
-const aspect_ratio = 1.2;
+const aspect_ratio = 1.5;
 var canvas = document.createElement("canvas");
 canvas.setAttribute("id", "canvas");
 canvas.height = window.innerHeight / 1.1;
@@ -30,7 +38,7 @@ canvasContainer.appendChild(canvas);
 var gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
 
 // Clear
-gl.clearColor(0.1, 0.1, 0.1, 1.0);
+gl.clearColor(0.0, 0.0, 0.0, 1.0);
 gl.clear(gl.COLOR_BUFFER_BIT);
 
 // Compile shaders
@@ -85,8 +93,10 @@ gl.bufferData(
 
 // Color
 gl.useProgram(program);
+/*
 program.color = gl.getUniformLocation(program, "color");
 gl.uniform4fv(program.color, tintColor);
+ */
 
 // Position
 program.position = gl.getAttribLocation(program, "position");
@@ -95,30 +105,27 @@ gl.vertexAttribPointer(program.position, 2, gl.FLOAT, false, 0, 0);
 
 // Uniforms
 var timeUniformLocation = gl.getUniformLocation(program, "time");
-var isMandelbrotUniformLocation = gl.getUniformLocation(program, "is_mandelbrot");
 var iterationUniformLocation = gl.getUniformLocation(program, "iters");
 var scaleUniformLocation = gl.getUniformLocation(program, "scale");
-var limitUniformLocation = gl.getUniformLocation(program, "limit");
 var offsetUniformLocation = gl.getUniformLocation(program, "offset");
+
+var redLocation = gl.getUniformLocation(program, "red");
+var greenLocation = gl.getUniformLocation(program, "green");
+var blueLocation = gl.getUniformLocation(program, "blue");
+
 
 var cRealUniformLocation = gl.getUniformLocation(program, "c_real");
 var cImagUniformLocation = gl.getUniformLocation(program, "c_imag");
-var colorFrequencyUniformLocation = gl.getUniformLocation(
-  program,
-  "color_frequency"
-);
 
 function setUniforms() {
-  gl.uniform1i(isMandelbrotUniformLocation, is_mandelbrot);
   gl.uniform1f(iterationUniformLocation, iterations);
   gl.uniform1f(scaleUniformLocation, scale);
-  gl.uniform1f(limitUniformLocation, limit);
   gl.uniform2fv(offsetUniformLocation, offset);
-
   gl.uniform1f(cRealUniformLocation, cReal);
   gl.uniform1f(cImagUniformLocation, cImag);
-  gl.uniform1f(colorFrequencyUniformLocation, colorFrequency);
-  gl.uniform4fv(program.color, tintColor);
+  gl.uniform3fv(redLocation, red);
+  gl.uniform3fv(greenLocation, green);
+  gl.uniform3fv(blueLocation, blue);
 }
 
 function updateValues() { }
@@ -127,6 +134,8 @@ var prev_time;
 var elapsed_frames = 0;
 var prev_fps = 60.0;
 var fpsElem = document.getElementById("fps");
+var resElement = document.getElementById("res");
+resElement.innerHTML = "res: " + canvas.width + "x" + canvas.height;
 function animate(t) {
   if (prev_time === undefined) {
     prev_time = t;
@@ -142,12 +151,12 @@ function animate(t) {
   }
 
   gl.uniform1f(timeUniformLocation, t / 1000);
+  timePlace.innerHTML = "time: " + (t / 1000).toFixed(2);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   updateValues();
   setUniforms();
 
-  // gl.drawArrays(gl.TRIANGLE_STRIP, 0, triangleVerts.length / 2);
   gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
 
   requestAnimationFrame(animate);

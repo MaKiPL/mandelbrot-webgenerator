@@ -1,38 +1,70 @@
-var iterElem = document.getElementById("iter");
-var colorElem = document.getElementById("color");
-var scaleElem = document.getElementById("scale");
-var limitElem = document.getElementById("limit");
-var cRealElem = document.getElementById("c-real");
-var cRealDisplay = document.getElementById("c-real-display");
-var cImagElem = document.getElementById("c-imag");
-var cImagDisplay = document.getElementById("c-imag-display");
-var offsetXElem = document.getElementById("offset-x");
-var offsetYElem = document.getElementById("offset-y");
-var colorFreqElem = document.getElementById("color-freq");
+const iterElem = document.getElementById("iter");
+const scaleElem = document.getElementById("scale");
+const iterRange = document.getElementById("iterRange");
+const zoomRange = document.getElementById("scaleValue");
+
+const COLOR_SELECTOR = ["r", "g", "b"];
+const VECTOR_SELECTOR = ["X", "Y", "Z"];
+const COLOR_COLORNAME = "Color";
+
+var COLOR_ELEMENTS = [];
+var COLOR_PICKERS = [];
+
+var colorVectors = [];
+
+
+for(var i = 0; i < COLOR_SELECTOR.length; i++) {
+  for(var j = 0; j < VECTOR_SELECTOR.length; j++) {
+    const colorElement = document.getElementById(COLOR_SELECTOR[i] + VECTOR_SELECTOR[j]);
+    COLOR_ELEMENTS.push(colorElement);
+    colorElement.addEventListener("change", function () {
+      updateColor(colorElement);
+    });
+  }
+  const colorPickerElement = document.getElementById(COLOR_SELECTOR[i] + COLOR_COLORNAME);
+  COLOR_PICKERS.push(colorPickerElement);
+    colorPickerElement.addEventListener("change", function() {
+      updateColor(colorPickerElement);
+    });
+}
+
 
 function uiResetCommon() {
   scaleElem.value = scale;
-  limitElem.value = limit;
-  cRealElem.value = cReal;
-  cImagElem.value = cImag;
+  zoomRange.value = scale;
+  colorVectors = [];
+  colorVectors.push(RED);
+  colorVectors.push(GREEN);
+  colorVectors.push(BLUE);
+  updatePickers();
+}
 
-  cRealDisplay.innerHTML = cReal;
-  cImagDisplay.innerHTML = cImag;
+function updatePickers()
+{
+  for(let i = 0; i < colorVectors.length; i++)
+  {
+    COLOR_ELEMENTS[i*3].value = colorVectors[i][0];
+    COLOR_ELEMENTS[i*3+1].value = colorVectors[i][1];
+    COLOR_ELEMENTS[i*3+2].value = colorVectors[i][2];
+    COLOR_PICKERS[i].value = "#" + colorVectors[i]
+        .map(x => Math.floor(x*255)
+            .toString(16)
+            .padStart(2, "0"))
+        .join("");
+  }
 }
 
 iterElem.value = iterations;
-offsetXElem.value = offset[0];
-offsetYElem.value = offset[1];
-colorFreqElem.value = colorFrequency;
 
 var mpostionInitial = { x: null, y: null };
-var mpostionFinal = { x: null, y: null };
+var mpostionFinal = { x: null, y: null }, iterations;
 canvas.addEventListener("wheel", function (e) {
   e.preventDefault();
   factor = -0.0005 * e.deltaY;
   if (factor + scale > 0.0) {
     scale *= (1 + factor);
     scaleElem.value = Math.sqrt(scale);
+    zoomRange.value = scaleElem.value;
   }
 });
 canvas.addEventListener("mousedown", function (e) {
@@ -51,29 +83,13 @@ canvas.addEventListener("mousemove", function (e) {
     }
     mpostionFinal = { x: e.clientX, y: e.clientY };
   }
+  updateRealImaginary();
 });
 canvas.addEventListener("mouseup", function (e) {
   e.preventDefault();
   mpostionInitial = { x: null, y: null };
   mpostionFinal = { x: null, y: null };
 });
-
-uiResetCommon();
-
-String.prototype.convertToRGBA = function () {
-  if (this.length != 6) {
-    throw "Only six-digit hex colors are allowed.";
-  }
-
-  var aRgbHex = this.match(/.{1,2}/g);
-  var aRgba = [
-    parseInt(aRgbHex[0], 16) / 255,
-    parseInt(aRgbHex[1], 16) / 255,
-    parseInt(aRgbHex[2], 16) / 255,
-    1.0,
-  ];
-  return aRgba;
-};
 
 iterElem.addEventListener("change", function (e) {
   iterations = e.target.value;
@@ -82,6 +98,7 @@ iterElem.addEventListener("change", function (e) {
 scaleElem.addEventListener("mousemove", function (e) {
   val = e.target.value;
   scale = val * val;
+  zoomRange.value = val;
 });
 
 scaleElem.addEventListener("change", function (e) {
@@ -89,59 +106,61 @@ scaleElem.addEventListener("change", function (e) {
   scale = val * val;
 });
 
-colorElem.addEventListener("change", function (e) {
-  val = e.target.value;
-  tintColor = val.toString().slice(1).convertToRGBA();
+iterRange.addEventListener("change", function (e) {
+  iterElem.value = e.target.value;
+  iterations = e.target.value;
 });
 
-cRealElem.addEventListener("mousemove", function (e) {
-  cReal = e.target.value;
-  cRealDisplay.innerHTML = cReal
+zoomRange.addEventListener("change", function (e) {
+  scaleElem.value = e.target.value;
+  scale = e.target.value * e.target.value;
 });
 
-cImagElem.addEventListener("mousemove", function (e) {
-  cImag = e.target.value;
-  cImagDisplay.innerHTML = cImag
-});
+function updateRealImaginary() {
+  document.getElementById("real").innerHTML =
+      "X: " + offset[0].toFixed(3);
+  document.getElementById("imaginary").innerHTML =
+      "Y: " + offset[1].toFixed(3);
+}
 
-limitElem.addEventListener("change", function (e) {
-  limit = e.target.value;
-});
+function updateColor(elem)
+{
+  if(elem.id.endsWith(COLOR_COLORNAME)) //colorPicker
+  {
+    const colIndex = elem.id[0];
+    let startIndex = 0;
+    switch(colIndex)
+    {
+      case "g":
+        startIndex = 3;
+        break;
+        case "b":
+        startIndex = 6;
+        break;
+    }
+    let color = elem.value.substring(1);
 
-offsetXElem.addEventListener("mousemove", function (e) {
+    for(let i = 0; i < VECTOR_SELECTOR.length; i++)
+    {
+      const numberElement = COLOR_ELEMENTS[startIndex+i];
+      const colorLocal = color.substring(0, 2);
+      numberElement.value = parseInt(colorLocal, 16)/256.0;
+      color = color.substring(2);
+    }
+  }
 
-});
+  for(let i = 0; i < COLOR_ELEMENTS.length; i++)
+  {
+    let positionLeft = i%3;
+    let vectorIndex = Math.floor(i/3);
+    let numberElement = COLOR_ELEMENTS[i];
+    colorVectors[vectorIndex][positionLeft] = numberElement.value;
+  }
 
-offsetYElem.addEventListener("mousemove", function (e) {
+    updatePickers();
 
-});
-
-colorFreqElem.addEventListener("change", function (e) {
-  colorFrequency = e.target.value;
-});
-
-var downloadButton = document.getElementById("download");
-
-document.getElementById("toggle-fractal").addEventListener("change", function (e) {
-  is_mandelbrot = 1 - e.target.value;
-  reset(is_mandelbrot);
-
-  document.getElementById("title").innerHTML = is_mandelbrot ? "Mandelbrot Set" : "Julia Set";
-
-  uiResetCommon();
-});
-
-function uiLoop() {
-  var factorX = 0.05 * offsetXElem.value * 1.0 / (10.0 * scale);
-  offset[0] += factorX;
-
-  var factorY = 0.05 * offsetYElem.value * 1.0 / (10.0 * scale);
-  offset[1] += factorY;
-
-  requestAnimationFrame(uiLoop);
-};
-uiLoop();
-
-
+}
 
 
+
+uiResetCommon();
